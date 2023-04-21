@@ -27,6 +27,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   They return an option used during a measurement that defines the attribute Set associated with the measurement. (#3971)
 - The `Version` function to `go.opentelemetry.io/otel/exporters/otlp/otlpmetric` to return the OTLP metrics client version. (#3956)
 - The `Version` function to `go.opentelemetry.io/otel/exporters/otlp/otlptrace` to return the OTLP trace client version. (#3956)
+- Added baggage to propagate through opentracing bridge. (#4021)
 
 ### Changed
 
