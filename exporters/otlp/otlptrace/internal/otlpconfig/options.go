@@ -17,6 +17,8 @@ package otlpconfig // import "go.opentelemetry.io/otel/exporters/otlp/otlptrace/
 import (
 	"crypto/tls"
 	"fmt"
+	"net/url"
+	"path"
 	"time"
 
 	"google.golang.org/grpc"
@@ -28,6 +30,7 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/internal"
 	"go.opentelemetry.io/otel/exporters/otlp/internal/retry"
 	otinternal "go.opentelemetry.io/otel/exporters/otlp/otlptrace/internal"
+	"go.opentelemetry.io/otel/internal/global"
 )
 
 const (
@@ -240,13 +243,45 @@ func NewGRPCOption(fn func(cfg Config) Config) GRPCOption {
 	return &grpcOption{fn: fn}
 }
 
-// Generic Options
+func NewGRPCOption(fn func(cfg Config) Config) GRPCOption {
+	return &grpcOption{fn: fn}
+}
 
-func WithEndpoint(endpoint string) GenericOption {
+func WithGRPCEndpoint(endpoint string) GenericOption {
 	return newGenericOption(func(cfg Config) Config {
-		cfg.Traces.Endpoint = endpoint
+		cfg.Metrics.Endpoint = endpoint
 		return cfg
 	})
+}
+
+// Generic Options
+
+func WithHTTPEndpoint(endpoint string) GenericOption {
+	return newGenericOption(func(cfg Config) Config {
+		// Add scheme if not present
+		if !internal.HasScheme(endpoint) {
+			endpoint = getScheme(cfg) + "://" + endpoint
+		}
+		u, err := url.Parse(endpoint)
+		if err != nil {
+			global.Error(err, "parse url", "input", endpoint)
+			return cfg
+		}
+		cfg.Metrics.Endpoint = u.Host
+		// For OTLP/HTTP endpoint URLs without a per-signal
+		// configuration, the passed endpoint is used as a base URL
+		// and the signals are sent to these paths relative to that.
+		cfg.Metrics.URLPath = path.Join(u.Path, DefaultMetricsPath)
+		return cfg
+	})
+}
+
+// getScheme fetches scheme based on config.
+func getScheme(cfg Config) string {
+	if cfg.Traces.Insecure {
+		return "http"
+	}
+	return "https"
 }
 
 func WithCompression(compression Compression) GenericOption {
